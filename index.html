@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EVOSHAPE — Créateur de séances</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d1730;
+    --bg-alt:#101c3c;
+    --surface: rgba(255,255,255,0.045);
+    --surface-2: rgba(255,255,255,0.08);
+    --line: rgba(255,255,255,0.10);
+    --text:#ffffff;
+    --text-dim:#a9b4cc;
+    --text-faint:#65708e;
+
+    --hyrox:#ff5470;
+    --athx:#4d7fff;
+    --deka:#ffb238;
+    --mixte:#a9b4cc;
+
+    --warmup:#ffb238;
+    --work:#ff5470;
+    --rest:#3ee6c8;
+    --cooldown:#4d7fff;
+
+    --accent:#4d7fff;
+    --accent-2:#7aa0ff;
+
+    --radius:16px;
+    --radius-full:999px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);}
+  body{
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse 900px 500px at 85% -10%, rgba(77,127,255,0.16), transparent 60%),
+      var(--bg);
+  }
+  ::selection{background:var(--accent);color:#ffffff;}
+
+  .display{font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:-0.01em;}
+  .mono{font-family:'Space Mono',monospace; font-variant-numeric:tabular-nums;}
+
+  /* ---------- layout shell ---------- */
+  #app{max-width:1180px;margin:0 auto;padding:0 20px 80px;}
+
+  header.top{
+    display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+    padding:14px 20px;margin:22px 0 40px;
+    background:rgba(255,255,255,0.045);
+    border:1px solid var(--line);
+    border-radius:28px;
+    backdrop-filter:blur(16px);
+    position:relative;
+  }
+  .wordmark{display:flex;align-items:center;gap:10px;}
+  .logomark{width:30px;height:30px;flex-shrink:0;}
+  .logomark path{fill:#ffffff;}
+  .wordmark .name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;letter-spacing:0.01em;}
+
+  nav.tabs{display:flex;flex-wrap:wrap;gap:2px;background:rgba(255,255,255,0.05);border:1px solid var(--line);border-radius:var(--radius-full);padding:4px;}
+  nav.tabs button{
+    font-family:'Inter',sans-serif;font-size:13px;font-weight:600;
+    color:var(--text-dim);background:transparent;border:none;border-radius:var(--radius-full);
+    padding:10px 20px;cursor:pointer;position:relative;transition:all .2s;
+  }
+  nav.tabs button:hover{color:var(--text);}
+  nav.tabs button.active{color:#ffffff;background:var(--accent);box-shadow:0 4px 16px rgba(77,127,255,0.4);}
+
+  section.panel{display:none;padding-top:36px;animation:fade .35s ease;}
+  section.panel.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  h1.pagehead{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:38px;line-height:1.05;margin:0 0 8px;letter-spacing:-0.01em;}
+  p.sub{color:var(--text-dim);font-size:14px;margin:0 0 32px;max-width:520px;line-height:1.6;}
+
+  /* ---------- discipline chips ---------- */
+  .chiprow{display:flex;gap:8px;flex-wrap:wrap;}
+  .chip{
+    font-family:'Inter',sans-serif;font-size:13px;font-weight:600;
+    padding:10px 20px;border:1px solid var(--line);background:var(--surface);color:var(--text-dim);
+    cursor:pointer;transition:all .15s;border-radius:var(--radius-full);
+  }
+  .chip[data-d="HYROX"].active{border-color:var(--hyrox);color:#ffffff;background:var(--hyrox);}
+  .chip[data-d="ATHX"].active{border-color:var(--athx);color:#ffffff;background:var(--athx);}
+  .chip[data-d="DEKA"].active{border-color:var(--deka);color:#0d1730;background:var(--deka);}
+  .chip[data-d="MIXTE"].active{border-color:var(--mixte);color:#0d1730;background:var(--mixte);}
+
+  /* ---------- form ---------- */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:28px;}
+  @media(max-width:720px){.form-grid{grid-template-columns:1fr;}}
+  .field label{display:block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-faint);margin-bottom:8px;}
+  .field select, .field input[type=text], .field input[type=number]{
+    width:100%;background:var(--surface);border:1px solid var(--line);color:var(--text);
+    padding:13px 16px;font-family:'Inter',sans-serif;font-size:14px;border-radius:12px;
+  }
+  .field select:focus, .field input:focus{outline:2px solid var(--accent);outline-offset:-1px;}
+  .field.full{grid-column:1/-1;}
+
+  button.primary{
+    font-family:'Inter',sans-serif;font-size:14px;font-weight:700;
+    background:var(--accent);color:#ffffff;border:none;padding:15px 30px;cursor:pointer;
+    margin-top:28px;transition:transform .1s, background .2s, box-shadow .2s;
+    border-radius:var(--radius-full);box-shadow:0 6px 20px rgba(77,127,255,0.35);
+  }
+  button.primary:hover{background:var(--accent-2);}
+  button.primary:active{transform:scale(0.98);}
+  button.primary:disabled{background:var(--text-faint);cursor:wait;box-shadow:none;}
+  button.ghost{
+    font-family:'Inter',sans-serif;font-size:13px;font-weight:600;
+    background:rgba(255,255,255,0.05);border:1px solid var(--line);color:var(--text-dim);
+    padding:10px 18px;cursor:pointer;border-radius:var(--radius-full);
+  }
+  button.ghost:hover{color:var(--text);border-color:var(--text-dim);background:rgba(255,255,255,0.09);}
+
+  /* ---------- generated course card ---------- */
+  #genStatus{margin-top:20px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--rest);display:none;}
+  .course-card{margin-top:36px;border:1px solid var(--line);background:var(--surface);display:none;border-radius:20px;overflow:hidden;backdrop-filter:blur(10px);}
+  .course-head{padding:26px 28px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+  .course-head .badge{font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;padding:4px 12px;border-radius:var(--radius-full);display:inline-block;margin-bottom:10px;}
+  .course-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:26px;margin:0;letter-spacing:-0.01em;}
+  .course-meta{font-family:'Inter',sans-serif;font-size:12px;color:var(--text-dim);margin-top:6px;}
+  .course-actions{display:flex;gap:8px;}
+
+  .steps{padding:6px 0;}
+  .step-row{
+    display:grid;grid-template-columns:100px 1fr 70px;gap:14px;align-items:center;
+    padding:14px 28px;border-bottom:1px solid var(--line);
+  }
+  .step-row:last-child{border-bottom:none;}
+  .phase-tag{font-family:'Inter',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:5px 0;text-align:center;border-radius:var(--radius-full);}
+  .phase-tag.warmup{color:#0d1730;background:var(--warmup);}
+  .phase-tag.work{color:#ffffff;background:var(--work);}
+  .phase-tag.rest{color:#0d1730;background:var(--rest);}
+  .phase-tag.cooldown{color:#ffffff;background:var(--cooldown);}
+  .step-name{font-size:14px;font-weight:600;}
+  .step-note{font-size:12px;color:var(--text-dim);margin-top:2px;font-weight:400;}
+  .step-dur{font-family:'Space Mono',monospace;font-size:14px;text-align:right;color:var(--text-dim);}
+  .step-loads{display:flex;gap:6px;margin-top:5px;}
+  .load-pill{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;padding:2px 9px;border-radius:var(--radius-full);}
+  .load-pill.o{background:rgba(77,127,255,0.14);color:var(--athx);border:1px solid rgba(77,127,255,0.35);}
+  .load-pill.p{background:rgba(255,84,112,0.14);color:var(--hyrox);border:1px solid rgba(255,84,112,0.35);}
+
+  /* ---------- manual step builder ---------- */
+  .manual-step-row{
+    background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;margin-bottom:10px;display:grid;
+    grid-template-columns:1fr 130px 90px;gap:10px 12px;align-items:end;
+  }
+  .manual-step-row .msf{display:flex;flex-direction:column;gap:5px;}
+  .manual-step-row .msf label{font-family:'Inter',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-faint);}
+  .manual-step-row input, .manual-step-row select{
+    background:var(--bg-alt);border:1px solid var(--line);color:var(--text);
+    padding:9px 11px;font-family:'Inter',sans-serif;font-size:13px;border-radius:8px;width:100%;
+  }
+  .manual-step-row .msf.wide{grid-column:1/-1;}
+  .manual-step-row .msf.loads{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .manual-step-row .ms-remove{
+    grid-column:-1;justify-self:end;background:none;border:none;color:var(--text-faint);
+    cursor:pointer;font-family:'Inter',sans-serif;font-size:12px;font-weight:700;padding:4px 8px;
+  }
+  .manual-step-row .ms-remove:hover{color:var(--work);}
+  @media(max-width:720px){.manual-step-row{grid-template-columns:1fr 1fr;}}
+
+  #manualFreeText{
+    width:100%;min-height:280px;background:var(--surface);border:1px solid var(--line);color:var(--text);
+    padding:18px 20px;font-family:'Inter',sans-serif;font-size:14px;line-height:1.7;border-radius:16px;resize:vertical;
+  }
+  #manualFreeText:focus{outline:2px solid var(--accent);outline-offset:-1px;}
+  #manualStatus{margin-top:16px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--rest);display:none;}
+
+  /* ---------- library grid (used in créateur bottom + TV tab) ---------- */
+  .lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:20px;}
+  .lib-card{border:1px solid var(--line);background:var(--surface);padding:20px;cursor:pointer;transition:all .2s;border-radius:16px;backdrop-filter:blur(8px);}
+  .lib-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+  .lib-card .badge{font-family:'Inter',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.04em;padding:4px 10px;border-radius:var(--radius-full);display:inline-block;margin-bottom:12px;}
+  .lib-card h3{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;margin:0 0 6px;letter-spacing:-0.005em;}
+  .lib-card .meta{font-family:'Inter',sans-serif;font-size:11px;color:var(--text-faint);}
+  .lib-empty{color:var(--text-faint);font-size:13px;font-family:'Inter',sans-serif;margin-top:20px;}
+
+  /* ---------- planning ---------- */
+  .planning-controls{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:24px;}
+  .planning-controls .field{min-width:160px;}
+  .planning-controls .field select{padding:13px 16px;}
+  #planGenStatus{margin-top:16px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--rest);display:none;}
+
+  .week-template-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:14px;}
+  @media(max-width:900px){.week-template-grid{grid-template-columns:repeat(2,1fr);}}
+  .wt-day{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 12px;display:flex;flex-direction:column;gap:8px;}
+  .wt-day .wt-label{font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);text-align:center;margin-bottom:2px;}
+  .wt-chip{
+    font-family:'Inter',sans-serif;font-size:11px;font-weight:700;text-align:center;
+    padding:7px 0;border-radius:var(--radius-full);border:1px solid var(--line);color:var(--text-dim);cursor:pointer;
+    transition:all .15s;
+  }
+  .wt-chip.active[data-d="HYROX"]{background:var(--hyrox);border-color:var(--hyrox);color:#fff;}
+  .wt-chip.active[data-d="ATHX"]{background:var(--athx);border-color:var(--athx);color:#fff;}
+  .wt-chip.active[data-d="DEKA"]{background:var(--deka);border-color:var(--deka);color:#0d1730;}
+
+  .month-calendar{margin-top:32px;}
+  .week-block{margin-bottom:18px;}
+  .week-label{font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-faint);margin-bottom:8px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;}
+  @media(max-width:900px){.cal-grid{grid-template-columns:repeat(2,1fr);}}
+  .cal-cell{
+    background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px;
+    min-height:120px;display:flex;flex-direction:column;gap:6px;backdrop-filter:blur(8px);
+  }
+  .cal-cell.rest{opacity:0.35;}
+  .cal-cell .cdate{font-family:'Inter',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);padding:0 4px;}
+  .cal-slot{border:1px solid var(--line);border-radius:10px;padding:8px 10px;cursor:pointer;transition:border-color .2s;display:flex;flex-direction:column;gap:4px;}
+  .cal-slot:hover{border-color:var(--accent);}
+  .cal-slot .cbadge{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;letter-spacing:0.04em;padding:3px 9px;border-radius:var(--radius-full);align-self:flex-start;}
+  .cal-slot .ctitle{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;line-height:1.2;}
+  .cal-slot .cnote{font-family:'Inter',sans-serif;font-size:9px;color:var(--text-dim);line-height:1.3;}
+  .cal-slot .cstate{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;color:var(--accent-2);}
+  .cal-slot .ctv{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;color:var(--rest);}
+
+  /* ---------- matériel ---------- */
+  #equipmentArea, #referenceArea{
+    width:100%;min-height:180px;background:var(--surface);border:1px solid var(--line);color:var(--text);
+    padding:18px 20px;font-family:'Inter',sans-serif;font-size:14px;line-height:1.7;border-radius:16px;resize:vertical;
+  }
+  #equipmentArea:focus, #referenceArea:focus{outline:2px solid var(--accent);outline-offset:-1px;}
+  #eqStatus{margin-top:14px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--rest);display:none;}
+
+  /* ---------- clients ---------- */
+  .add-client-row{display:flex;gap:10px;margin-top:24px;max-width:420px;}
+  .add-client-row input{flex:1;border-radius:var(--radius-full) !important;}
+  .client-list{margin-top:32px;display:flex;flex-direction:column;gap:8px;}
+  .client-row{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:18px 22px;background:var(--surface);border:1px solid var(--line);cursor:pointer;
+    border-radius:16px;backdrop-filter:blur(8px);transition:border-color .2s;
+  }
+  .client-row:hover{border-color:var(--accent);}
+  .client-row .cname{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;}
+  .client-row .csub{font-family:'Inter',sans-serif;font-size:11px;color:var(--text-faint);}
+
+  .planner{margin-top:28px;display:none;}
+  .planner-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+  .planner-head h2{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:24px;margin:0;}
+  .week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;}
+  .day-cell{background:var(--surface);border:1px solid var(--line);padding:14px;min-height:120px;display:flex;flex-direction:column;gap:10px;border-radius:14px;}
+  .day-cell .dname{font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);}
+  .day-cell select{width:100%;background:var(--bg-alt);border:1px solid var(--line);color:var(--text);font-size:11px;padding:9px;font-family:'Inter',sans-serif;border-radius:8px;}
+  .day-assigned{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:var(--rest);}
+  @media(max-width:900px){.week-grid{grid-template-columns:repeat(2,1fr);}}
+
+  /* ---------- TV fullscreen ---------- */
+  #tvOverlay{
+    position:fixed;inset:0;z-index:999;display:none;
+    background:
+      radial-gradient(ellipse 1200px 700px at 80% -10%, rgba(77,127,255,0.18), transparent 60%),
+      radial-gradient(ellipse 900px 600px at 10% 110%, rgba(77,127,255,0.10), transparent 60%),
+      #070d1e;
+    flex-direction:column;align-items:center;justify-content:center;
+  }
+  #tvOverlay.active{display:flex;}
+
+  html.has-rotation, html.has-rotation body{overflow:hidden;height:100%;width:100%;margin:0;}
+  #tvOverlay.rotate-90, #tvOverlay.rotate-270{
+    position:fixed;top:50%;left:50%;inset:auto;
+    width:100vh;height:100vw;
+    transform-origin:center center;
+  }
+  #tvOverlay.rotate-90{ transform:translate(-50%,-50%) rotate(90deg); }
+  #tvOverlay.rotate-270{ transform:translate(-50%,-50%) rotate(270deg); }
+
+  .tv-run-view, .tv-preview-view{display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;}
+  .tv-run-view.active, .tv-preview-view.active{display:flex;}
+
+  .tv-preview-view{padding:28px 20px;overflow:hidden;}
+  .tv-preview-view .tv-phase{margin-bottom:14px;padding:8px 22px;}
+  .tv-preview-view .tv-name{margin-bottom:6px;font-size:clamp(22px,4.5vmax,44px);}
+  .tv-preview-meta{font-family:'Inter',sans-serif;font-weight:600;font-size:clamp(12px,1.9vmax,15px);color:#a9b4cc;margin-bottom:24px;}
+  .tv-preview-list{
+    width:min(94vw,1500px);max-height:none;overflow:visible;
+    columns: 360px auto; column-gap:14px;
+    border:none;background:none;backdrop-filter:none;
+  }
+  .tv-preview-list .step-row{
+    break-inside:avoid; -webkit-column-break-inside:avoid;
+    border:1px solid rgba(255,255,255,0.10);border-radius:12px;background:rgba(255,255,255,0.035);
+    margin-bottom:10px;padding:10px 18px;
+    grid-template-columns:90px 1fr 62px;
+  }
+  .tv-preview-list.compact .step-row{padding:7px 14px;margin-bottom:6px;}
+  .tv-preview-list .phase-tag{font-size:9px;padding:4px 0;}
+  .tv-preview-list .step-name{font-size:clamp(11px,1.6vmax,14px);color:#ffffff;}
+  .tv-preview-list .step-note{font-size:clamp(9px,1.2vmax,11px);color:#a9b4cc;}
+  .tv-preview-list .step-dur{font-size:clamp(11px,1.5vmax,13px);color:#a9b4cc;}
+
+  /* ---------- TV kiosk idle screen ---------- */
+  .tv-idle-view{display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;text-align:center;padding:20px;}
+  .tv-idle-view.active{display:flex;}
+  .tv-idle-view .logomark{width:clamp(50px,9vmax,110px);height:clamp(50px,9vmax,110px);margin-bottom:28px;opacity:0.9;}
+  .tv-idle-view .idle-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(20px,4vmax,34px);color:#ffffff;margin-bottom:12px;}
+  .tv-idle-view .idle-sub{font-family:'Inter',sans-serif;font-size:clamp(12px,1.8vmax,16px);color:#65708e;max-width:500px;line-height:1.6;}
+  .kiosk-mode .tv-controls, .kiosk-mode #tvExit, .kiosk-mode #tvStartBtn{display:none !important;}
+
+  /* ---------- remote control panel (tablet side) ---------- */
+  .remote-modeswitch{display:flex;gap:8px;margin-bottom:24px;}
+  .remote-panel{
+    margin-top:36px;border:1px solid var(--line);background:var(--surface);border-radius:20px;
+    padding:26px 28px;display:none;backdrop-filter:blur(10px);
+  }
+  .remote-panel.active{display:block;}
+  .remote-panel .rp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:20px;}
+  .remote-panel .rp-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:22px;}
+  .remote-panel .rp-status{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:var(--rest);margin-top:4px;}
+  .remote-btns{display:flex;gap:10px;flex-wrap:wrap;}
+  .remote-btns button.primary{margin-top:0;}
+  .tv-link-box{
+    margin-top:32px;border:1px dashed var(--line);border-radius:16px;padding:18px 20px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  }
+  .tv-link-box code{font-family:'Space Mono',monospace;font-size:12px;color:var(--accent-2);word-break:break-all;}
+  .tv-link-box p{font-family:'Inter',sans-serif;font-size:12px;color:var(--text-dim);margin:0 0 8px;}
+  .tv-phase{
+    font-family:'Inter',sans-serif;font-weight:700;font-size:clamp(14px,2.4vmax,20px);letter-spacing:0.18em;text-transform:uppercase;
+    padding:12px 30px;border-radius:var(--radius-full);margin-bottom:32px;color:#0d1730;
+  }
+  .tv-name{
+    font-family:'Space Grotesk',sans-serif;font-weight:700;text-align:center;letter-spacing:-0.01em;
+    font-size:clamp(28px,7.5vmax,68px);line-height:1.05;padding:0 40px;margin-bottom:36px;color:#ffffff;
+  }
+  .tv-clock{
+    font-family:'Space Mono',monospace;font-weight:700;font-size:clamp(90px,24vmax,260px);
+    line-height:1;letter-spacing:0.02em;color:#ffffff;
+  }
+  .tv-bar-wrap{width:min(70vw,700px);height:8px;background:rgba(255,255,255,0.08);margin-top:36px;border-radius:var(--radius-full);overflow:hidden;}
+  .tv-bar-fill{height:100%;width:0%;transition:width 1s linear;}
+  .tv-next{margin-top:26px;font-family:'Inter',sans-serif;font-weight:600;font-size:clamp(12px,1.9vmax,16px);color:#65708e;text-transform:uppercase;letter-spacing:0.08em;}
+  .tv-run-loads{display:flex;gap:12px;margin-top:6px;margin-bottom:6px;}
+  .tv-run-loads .load-pill{font-size:clamp(13px,1.8vmax,20px);padding:6px 18px;}
+  .tv-controls{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);display:flex;gap:10px;}
+  .tv-controls button{
+    font-family:'Inter',sans-serif;font-size:13px;font-weight:600;
+    background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);color:#ffffff;
+    padding:11px 20px;cursor:pointer;border-radius:var(--radius-full);backdrop-filter:blur(8px);
+  }
+  .tv-controls button:hover{background:rgba(255,255,255,0.14);}
+  #tvExit{position:absolute;top:28px;right:32px;}
+
+  .tv-pick-note{font-family:'Inter',sans-serif;font-size:12px;color:var(--text-faint);margin-top:6px;}
+
+  ::-webkit-scrollbar{width:10px;}
+  ::-webkit-scrollbar-thumb{background:var(--surface-2);}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header class="top">
+    <div class="wordmark">
+      <svg class="logomark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 8 L82 26 L82 30 L64 42 L64 58 L86 70 L86 76 L54 94 L50 92 L50 74 L34 66 L18 76 L14 74 L14 46 L32 36 L32 20 Z"/>
+      </svg>
+      <span class="name">EVO SHAPE</span>
+    </div>
+    <nav class="tabs">
+      <button data-tab="creer" class="active">Créateur</button>
+      <button data-tab="planning">Planning</button>
+      <button data-tab="clients">Clients</button>
+      <button data-tab="materiel">Matériel</button>
+      <button data-tab="tv">Diffusion TV</button>
+    </nav>
+  </header>
+
+  <!-- ============ CRÉATEUR ============ -->
+  <section class="panel active" id="panel-creer">
+    <h1 class="pagehead">Créer une séance</h1>
+    <p class="sub">Génère un cours avec l'IA, ou construis-le toi-même exercice par exercice.</p>
+
+    <div class="chiprow" style="margin-bottom:28px;">
+      <div class="chip active" id="modeAi" data-mode="ai">Génération IA</div>
+      <div class="chip" id="modeManual" data-mode="manual">Saisie manuelle</div>
+    </div>
+
+    <!-- ===== MODE IA ===== -->
+    <div id="aiGenSection">
+      <div class="field">
+        <label>Discipline</label>
+        <div class="chiprow" id="disciplineChips">
+          <div class="chip active" data-d="HYROX">Hyrox</div>
+          <div class="chip" data-d="ATHX">Athx</div>
+          <div class="chip" data-d="DEKA">Deka</div>
+          <div class="chip" data-d="MIXTE">Mixte</div>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>Durée cible</label>
+          <select id="durationSelect">
+            <option value="30">30 min</option>
+            <option value="45" selected>45 min</option>
+            <option value="60">60 min</option>
+            <option value="75">75 min</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label>Focus / thème (optionnel)</label>
+          <input type="text" id="themeInput" placeholder="Ex : simulation course, haut du corps, engine pur, sled focus...">
+        </div>
+      </div>
+
+      <button class="primary" id="generateBtn">Générer le cours</button>
+      <div id="genStatus"></div>
+    </div>
+
+    <!-- ===== MODE MANUEL ===== -->
+    <div id="manualSection" style="display:none;">
+      <div class="field">
+        <label>Discipline</label>
+        <div class="chiprow" id="manualDisciplineChips">
+          <div class="chip active" data-d="HYROX">Hyrox</div>
+          <div class="chip" data-d="ATHX">Athx</div>
+          <div class="chip" data-d="DEKA">Deka</div>
+          <div class="chip" data-d="MIXTE">Mixte</div>
+        </div>
+      </div>
+
+      <div class="field full" style="margin-top:20px;">
+        <label>Titre de la séance</label>
+        <input type="text" id="manualTitleInput" placeholder="Ex : Hyrox Sled Focus">
+      </div>
+
+      <div class="field full" style="margin-top:20px;">
+        <label>Écris ta séance comme tu le ferais à la main</label>
+        <textarea id="manualFreeText" placeholder="Ex :
+échauffement 8min row léger + mobilité épaules
+8x (400m run + 20 wall balls 6kg/9kg)
+repos 1min entre chaque tour
+cooldown étirements 5min"></textarea>
+      </div>
+
+      <button class="primary" id="formatManualBtn">Mettre en forme</button>
+      <div id="manualStatus"></div>
+    </div>
+
+    <div class="course-card" id="courseCard">
+      <div class="course-head">
+        <div>
+          <span class="badge" id="cardBadge"></span>
+          <h2 class="course-title" id="cardTitle"></h2>
+          <div class="course-meta" id="cardMeta"></div>
+        </div>
+        <div class="course-actions">
+          <button class="ghost" id="saveCourseBtn">Enregistrer</button>
+          <button class="ghost" id="regenBtn">Regénérer</button>
+        </div>
+      </div>
+      <div class="steps" id="stepsList"></div>
+    </div>
+
+    <h2 class="pagehead" style="font-size:22px;margin-top:60px;">Bibliothèque</h2>
+    <p class="sub" style="margin-bottom:0;">Tous les cours enregistrés.</p>
+    <div class="lib-grid" id="libGridCreer"></div>
+    <div class="lib-empty" id="libEmptyCreer">Aucun cours enregistré pour l'instant.</div>
+  </section>
+
+  <!-- ============ PLANNING (1 mois) ============ -->
+  <section class="panel" id="panel-planning">
+    <h1 class="pagehead">Programmation mensuelle</h1>
+    <p class="sub">Basée sur ton planning hebdo réel : une séance générée par discipline et par jour (pas par créneau horaire) — elle sert pour tous les cours de cette discipline ce jour-là.</p>
+
+    <div class="field full" style="margin-bottom:8px;">
+      <label>Ton planning hebdomadaire</label>
+    </div>
+    <div class="week-template-grid" id="weekTemplateGrid"></div>
+
+    <div class="field full" style="margin-top:20px;margin-bottom:0;">
+      <label>Objectif / thème du mois (optionnel)</label>
+      <input type="text" id="planThemeInput" placeholder="Ex : préparer les clients pour une course dans 6 semaines, mois orienté force, focus sur l'engine, reprise en douceur après les vacances...">
+    </div>
+
+    <div class="planning-controls" style="margin-top:20px;">
+      <div class="field">
+        <label>Durée / séance</label>
+        <select id="planDurationSelect">
+          <option value="30">30 min</option>
+          <option value="45" selected>45 min</option>
+          <option value="60">60 min</option>
+        </select>
+      </div>
+      <button class="primary" id="generatePlanBtn" style="margin-top:0;">Générer le mois</button>
+    </div>
+    <div id="planGenStatus"></div>
+
+    <div class="month-calendar" id="monthCalendar"></div>
+  </section>
+
+  <!-- ============ CLIENTS ============ -->
+  <section class="panel" id="panel-clients">
+    <h1 class="pagehead">Programmation clients</h1>
+    <p class="sub">Assigne un cours de ta bibliothèque à chaque client, jour par jour.</p>
+
+    <div class="add-client-row">
+      <input type="text" id="newClientInput" placeholder="Nom du client">
+      <button class="primary" style="margin-top:0;" id="addClientBtn">Ajouter</button>
+    </div>
+
+    <div class="client-list" id="clientList"></div>
+
+    <div class="planner" id="planner">
+      <div class="planner-head">
+        <h2 id="plannerClientName"></h2>
+        <button class="ghost" id="closeplannerBtn">Fermer</button>
+      </div>
+      <div class="week-grid" id="weekGrid"></div>
+    </div>
+  </section>
+
+  <!-- ============ MATÉRIEL ============ -->
+  <section class="panel" id="panel-materiel">
+    <h1 class="pagehead">Matériel & style de séances</h1>
+    <p class="sub">Trois infos que l'IA garde en tête à chaque génération.</p>
+
+    <div class="field full" style="margin-bottom:32px;">
+      <label>Clé API Gemini (obligatoire pour générer des cours)</label>
+      <input type="text" id="geminiKeyInput" placeholder="Colle ta clé ici — récupère-la gratuitement sur aistudio.google.com/apikey" style="border-radius:12px;">
+      <p style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text-faint);margin:8px 0 0;">
+        Gratuit, sans carte bancaire : va sur <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent-2);">aistudio.google.com/apikey</a>, connecte-toi avec ton compte Google, clique "Create API key", colle le résultat ici.
+      </p>
+    </div>
+
+    <div class="field full" style="margin-bottom:32px;">
+      <label>Ton équipement</label>
+      <textarea id="equipmentArea" placeholder="Ex : 4 Rowers Concept2, 2 SkiErg, 2 Sleds, Wall balls 6kg/9kg, Kettlebells 12-32kg, Sandbags 10-20kg, Assault bike, Barres olympiques + disques, Haltères 5-30kg, Boîtes plyo, Cordes à sauter, Anneaux TRX, Rig traction/dips, Bandes élastiques..."></textarea>
+    </div>
+
+    <div class="field full" style="margin-bottom:12px;">
+      <label>Tes séances types (optionnel)</label>
+      <textarea id="referenceArea" placeholder="Colle ici 1 à plusieurs exemples de séances que tu donnes déjà (format, exercices, structure). L'IA s'en inspirera pour rester dans ton style, notamment pour générer la programmation mensuelle."></textarea>
+    </div>
+
+    <button class="primary" id="saveEquipmentBtn">Enregistrer</button>
+    <div id="eqStatus"></div>
+  </section>
+
+  <!-- ============ TV ============ -->
+  <section class="panel" id="panel-tv">
+    <h1 class="pagehead">Télécommande TV</h1>
+    <p class="sub">Choisis un cours : il s'envoie automatiquement sur ta TV (déjà ouverte sur son lien favori). Pilote le démarrage, la pause et l'enchaînement depuis ta tablette.</p>
+
+    <div class="remote-modeswitch">
+      <div class="chip active" id="modeRemote" data-mode="remote">Télécommande (TV séparée)</div>
+      <div class="chip" id="modeLocal" data-mode="local">Cast local (cet onglet)</div>
+    </div>
+
+    <div class="lib-grid" id="libGridTv"></div>
+    <div class="lib-empty" id="libEmptyTv">Aucun cours enregistré. Va dans « Créateur » pour en générer un.</div>
+
+    <div class="remote-panel" id="remotePanel">
+      <div class="rp-head">
+        <div>
+          <div class="rp-title" id="rpTitle"></div>
+          <div class="rp-status" id="rpStatus">Envoyé à la TV — en attente de démarrage</div>
+        </div>
+      </div>
+      <div class="remote-btns">
+        <button class="primary" id="rpStart">▶ Démarrer</button>
+        <button class="ghost" id="rpPause">Pause</button>
+        <button class="ghost" id="rpSkip">Suivant</button>
+        <button class="ghost" id="rpRestart">Relancer</button>
+        <button class="ghost" id="rpExit">Arrêter la diffusion</button>
+      </div>
+    </div>
+
+    <div class="tv-link-box">
+      <div>
+        <p>À faire une seule fois sur la TV : ouvre ce lien dans son navigateur puis ajoute-le en favori.</p>
+        <code id="tvLinkText">…</code>
+      </div>
+      <button class="ghost" id="copyTvLink">Copier le lien</button>
+    </div>
+  </section>
+</div>
+
+<!-- ============ TV FULLSCREEN OVERLAY ============ -->
+<div id="tvOverlay">
+  <button id="tvExit" class="ghost">Quitter</button>
+
+  <div id="tvIdleView" class="tv-idle-view">
+    <svg class="logomark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="#ffffff">
+      <path d="M50 8 L82 26 L82 30 L64 42 L64 58 L86 70 L86 76 L54 94 L50 92 L50 74 L34 66 L18 76 L14 74 L14 46 L32 36 L32 20 Z"/>
+    </svg>
+    <div class="idle-title">En attente d'une séance</div>
+    <div class="idle-sub">Lance un cours depuis l'onglet Télécommande TV sur ta tablette. L'écran se mettra à jour automatiquement.</div>
+  </div>
+
+  <div id="tvPreviewView" class="tv-preview-view">
+    <div class="tv-phase" id="tvPreviewBadge"></div>
+    <div class="tv-name" id="tvPreviewTitle" style="margin-bottom:8px;"></div>
+    <div class="tv-preview-meta" id="tvPreviewMeta"></div>
+    <div class="tv-preview-list" id="tvPreviewList"></div>
+    <button class="primary" id="tvStartBtn" style="margin-top:24px;">Démarrer la séance</button>
+  </div>
+
+  <div id="tvRunView" class="tv-run-view">
+    <div class="tv-phase" id="tvPhase">Prêt</div>
+    <div class="tv-name" id="tvName">—</div>
+    <div class="tv-run-loads" id="tvRunLoads"></div>
+    <div class="tv-clock mono" id="tvClock">00:00</div>
+    <div class="tv-bar-wrap"><div class="tv-bar-fill" id="tvBarFill"></div></div>
+    <div class="tv-next" id="tvNext"></div>
+    <div class="tv-controls">
+      <button id="tvPlayPause">Pause</button>
+      <button id="tvSkip">Suivant</button>
+      <button id="tvRestart">Relancer</button>
+      <button id="tvBackToList">Voir la liste</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+/* =====================================================================
+   CONFIGURATION FIREBASE — remplace les valeurs ci-dessous par celles
+   copiées depuis la console Firebase (Paramètres du projet > Vos applications).
+   ===================================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyASkMnE-4lDO8nHCEG7U_bw8nXsU9fcweo",
+  authDomain: "cours-tv.firebaseapp.com",
+  projectId: "cours-tv",
+  storageBucket: "cours-tv.firebasestorage.app",
+  messagingSenderId: "185231954133",
+  appId: "1:185231954133:web:dca6a2b6e1c057d7e7d25c"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* Compatibilité avec l'API window.storage utilisée dans le reste de l'appli */
+window.storage = {
+  async get(key){
+    const doc = await db.collection('kv').doc(key).get();
+    if(!doc.exists) return null;
+    return { key, value: doc.data().value };
+  },
+  async set(key, value){
+    await db.collection('kv').doc(key).set({ value, updatedAt: Date.now() });
+    return { key, value };
+  },
+  async delete(key){
+    await db.collection('kv').doc(key).delete();
+    return { key, deleted:true };
+  },
+  async list(prefix){
+    prefix = prefix || '';
+    const snap = await db.collection('kv')
+      .orderBy(firebase.firestore.FieldPath.documentId())
+      .startAt(prefix)
+      .endAt(prefix + '\uf8ff')
+      .get();
+    return { keys: snap.docs.map(d=>d.id) };
+  }
+};
+
+/* Référence directe au document live pour l'écoute temps réel côté TV */
+window.liveStateRef = db.collection('kv').doc('live:tvstate');
+</script>
+<script>
+/* ---------------------------------------------------------------
+   STATE
+--------------------------------------------------------------- */
+const urlParams = new URLSearchParams(window.location.search);
+const isTvKiosk = urlParams.get('tv') === '1';
+const rotateParam = urlParams.get('rotate'); // '90' or '270', pour compenser une TV qui ne fait pas la rotation elle-même
+const tvLinkUrl = window.location.origin + window.location.pathname + '?tv=1';
+
+let courses = [];      // {id, title, discipline, level, duration_min, steps:[{name,phase,duration_sec,note}]}
+let clients = [];       // {id, name, plan:{Lun:courseId,...}}
+let currentGenerated = null;
+let selectedDiscipline = "HYROX";
+let openClientId = null;
+let equipmentText = '';
+let referenceText = '';
+let geminiApiKey = '';
+let planSkeleton = null; // {level, duration, generatedAt, days:[{dateISO,dateLabel,weekdayShort,mondayIndex,isTrain,slots:[{discipline,title,focus,courseId}]}]}
+let weeklyTemplate = {
+  Lun: ["HYROX","ATHX"],
+  Mar: ["ATHX","HYROX","DEKA"],
+  Mer: ["HYROX","ATHX"],
+  Jeu: ["ATHX","HYROX","DEKA"],
+  Ven: ["HYROX","ATHX"],
+  Sam: ["DEKA","ATHX","HYROX"],
+  Dim: []
+};
+
+const DAYS = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+const PHASE_LABEL = {warmup:"Échauffement", work:"Effort", rest:"Récup", cooldown:"Retour au calme"};
+
+/* ---------------------------------------------------------------
+   STORAGE HELPERS
+--------------------------------------------------------------- */
+async function loadAll(){
+  try{
+    const list = await window.storage.list('course:');
+    if(list && list.keys){
+      courses = [];
+      for(const k of list.keys){
+        try{
+          const r = await window.storage.get(k);
+          if(r) courses.push(JSON.parse(r.value));
+        }catch(e){}
+      }
+    }
+  }catch(e){ courses = []; }
+
+  try{
+    const list = await window.storage.list('client:');
+    if(list && list.keys){
+      clients = [];
+      for(const k of list.keys){
+        try{
+          const r = await window.storage.get(k);
+          if(r) clients.push(JSON.parse(r.value));
+        }catch(e){}
+      }
+    }
+  }catch(e){ clients = []; }
+
+  try{
+    const r = await window.storage.get('settings:equipment');
+    equipmentText = r ? r.value : '';
+  }catch(e){ equipmentText = ''; }
+  document.getElementById('equipmentArea').value = equipmentText;
+
+  try{
+    const r = await window.storage.get('settings:reference');
+    referenceText = r ? r.value : '';
+  }catch(e){ referenceText = ''; }
+  document.getElementById('referenceArea').value = referenceText;
+
+  try{
+    const r = await window.storage.get('settings:geminiKey');
+    geminiApiKey = r ? r.value : '';
+  }catch(e){ geminiApiKey = ''; }
+  document.getElementById('geminiKeyInput').value = geminiApiKey;
+
+  try{
+    const r = await window.storage.get('planning:skeleton');
+    planSkeleton = r ? JSON.parse(r.value) : null;
+  }catch(e){ planSkeleton = null; }
+
+  try{
+    const r = await window.storage.get('planning:weeklyTemplate');
+    if(r) weeklyTemplate = JSON.parse(r.value);
+  }catch(e){ /* keep default pre-filled template */ }
+
+  renderLibrary();
+  renderClients();
+  renderWeekTemplateEditor();
+  renderPlanningCalendar();
+}
+
+async function saveCourseToStorage(course){
+  await window.storage.set('course:'+course.id, JSON.stringify(course));
+}
+async function saveClientToStorage(client){
+  await window.storage.set('client:'+client.id, JSON.stringify(client));
+}
+async function savePlanningSkeleton(){
+  await window.storage.set('planning:skeleton', JSON.stringify(planSkeleton));
+}
+
+/* ---------------------------------------------------------------
+   TABS
+--------------------------------------------------------------- */
+document.getElementById('tvLinkText').textContent = tvLinkUrl;
+document.getElementById('copyTvLink').addEventListener('click', ()=>{
+  navigator.clipboard.writeText(tvLinkUrl).then(()=>{
+    const btn = document.getElementById('copyTvLink');
+    const orig = btn.textContent;
+    btn.textContent = 'Copié !';
+    setTimeout(()=>{btn.textContent = orig;}, 1500);
+  }).catch(()=>{});
+});
+
+let tvDispatchMode = 'remote';
+document.getElementById('modeRemote').addEventListener('click', ()=>{
+  tvDispatchMode = 'remote';
+  document.getElementById('modeRemote').classList.add('active');
+  document.getElementById('modeLocal').classList.remove('active');
+});
+document.getElementById('modeLocal').addEventListener('click', ()=>{
+  tvDispatchMode = 'local';
+  document.getElementById('modeLocal').classList.add('active');
+  document.getElementById('modeRemote').classList.remove('active');
+});
+
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('section.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ---------------------------------------------------------------
+   DISCIPLINE CHIPS
+--------------------------------------------------------------- */
+document.querySelectorAll('#disciplineChips .chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#disciplineChips .chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    selectedDiscipline = chip.dataset.d;
+  });
+});
+
+/* ---------------------------------------------------------------
+   MODE SWITCH (Génération IA / Saisie manuelle)
+--------------------------------------------------------------- */
+document.getElementById('modeAi').addEventListener('click', ()=>{
+  document.getElementById('modeAi').classList.add('active');
+  document.getElementById('modeManual').classList.remove('active');
+  document.getElementById('aiGenSection').style.display = 'block';
+  document.getElementById('manualSection').style.display = 'none';
+});
+document.getElementById('modeManual').addEventListener('click', ()=>{
+  document.getElementById('modeManual').classList.add('active');
+  document.getElementById('modeAi').classList.remove('active');
+  document.getElementById('manualSection').style.display = 'block';
+  document.getElementById('aiGenSection').style.display = 'none';
+});
+
+/* ---------------------------------------------------------------
+   SAISIE MANUELLE — écriture libre, mise en forme par l'IA
+--------------------------------------------------------------- */
+let selectedManualDiscipline = "HYROX";
+
+document.querySelectorAll('#manualDisciplineChips .chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#manualDisciplineChips .chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    selectedManualDiscipline = chip.dataset.d;
+  });
+});
+
+document.getElementById('formatManualBtn').addEventListener('click', formatManualCourse);
+
+async function formatManualCourse(){
+  const title = document.getElementById('manualTitleInput').value.trim();
+  const rawText = document.getElementById('manualFreeText').value.trim();
+  const status = document.getElementById('manualStatus');
+  const btn = document.getElementById('formatManualBtn');
+
+  if(!rawText){ status.style.display='block'; status.style.color='var(--work)'; status.textContent = 'Écris ta séance dans la zone de texte d\'abord.'; return; }
+
+  btn.disabled = true;
+  status.style.display = 'block';
+  status.style.color = 'var(--rest)';
+  status.textContent = 'Mise en forme en cours...';
+  document.getElementById('courseCard').style.display = 'none';
+
+  const systemPrompt = `Tu structures en JSON une séance de sport écrite librement, à la main, par un coach Hyrox/Athx/Deka. Réponds UNIQUEMENT avec un objet JSON valide, sans texte avant/après, sans markdown.
+Format exact :
+{"steps":[{"name":"...", "phase":"warmup"|"work"|"rest"|"cooldown", "duration_sec":nombre entier, "note":"...", "load_open":"...", "load_pro":"..."}]}
+Règles :
+- Découpe le texte en étapes ordonnées, dans le même ordre que ce qui est écrit. Ne rajoute AUCUN exercice qui n'est pas mentionné, ne supprime rien de ce qui est écrit.
+- Devine la phase à partir du contexte (échauffement en premier = warmup, retour au calme/étirements à la fin = cooldown, repos explicite = rest, le reste = work).
+- Si une durée/un temps est précisé dans le texte, utilise-le exactement (converti en secondes). Sinon, estime un temps réaliste.
+- Si des charges Open et/ou Pro sont mentionnées, remplis load_open/load_pro. Sinon laisse "".
+- Si le texte contient une répétition explicite du type "8x (A + B)" avec un nombre de tours fixe et connu, développe chaque occurrence en étapes séparées dans l'ordre.
+- AMRAP (as many rounds as possible) : NE JAMAIS développer en plusieurs lignes. C'est UN SEUL bloc "work", avec duration_sec = le temps cap annoncé (ex: "AMRAP 20min" → duration_sec 1200), et le name/note doit lister le contenu du tour (ex: name "AMRAP 20min", note "10 burpees, 15 wall balls, 20 sit-ups — enchaîne les tours jusqu'à la fin du temps"). Le nombre de tours étant variable et inconnu à l'avance, ça reste toujours une seule étape.
+- EMOM (every minute on the minute) : reste aussi UN SEUL bloc si le texte ne détaille pas un contenu différent à chaque minute ; duration_sec = durée totale annoncée, note = ce qu'il faut faire chaque minute.
+- Garde les noms d'exercices tels qu'écrits par le coach, juste nettoyés/reformulés proprement, sans charge dans le nom (la charge va dans load_open/load_pro).`;
+
+  const userPrompt = `Discipline : ${selectedManualDiscipline}${title ? `\nTitre donné par le coach : ${title}` : ''}\n\nSéance écrite par le coach :\n"""\n${rawText}\n"""`;
+
+  try{
+    const parsed = await fetchGeminiJson(systemPrompt, userPrompt, 8000, (attempt, waitSec)=>{
+      status.style.color = 'var(--rest)';
+      status.textContent = `Quota gratuit atteint, nouvelle tentative dans ${waitSec}s (${attempt}/4)...`;
+    });
+    if(!parsed.steps || !Array.isArray(parsed.steps) || parsed.steps.length === 0){
+      throw new Error("Aucun exercice détecté, vérifie le texte.");
+    }
+
+    const totalSec = parsed.steps.reduce((a,s)=>a+(parseInt(s.duration_sec)||60),0);
+    currentGenerated = {
+      id: 'c' + Date.now() + Math.floor(Math.random()*1000),
+      title: title || "Séance manuscrite",
+      discipline: selectedManualDiscipline,
+      duration_min: Math.round(totalSec/60),
+      steps: parsed.steps.map(s => ({
+        name: s.name || "Exercice",
+        phase: ["warmup","work","rest","cooldown"].includes(s.phase) ? s.phase : "work",
+        duration_sec: Math.max(5, parseInt(s.duration_sec) || 60),
+        note: s.note || "",
+        load_open: s.load_open || "",
+        load_pro: s.load_pro || ""
+      }))
+    };
+
+    renderCourseCard(currentGenerated);
+    document.getElementById('courseCard').scrollIntoView({behavior:'smooth', block:'start'});
+    status.style.display = 'none';
+  }catch(err){
+    status.style.color = 'var(--work)';
+    status.textContent = "Erreur : " + (err && err.message ? err.message : String(err));
+    console.error(err);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+/* ---------------------------------------------------------------
+   AI COURSE GENERATION
+--------------------------------------------------------------- */
+const FORMAT_NOTES = {
+  HYROX: "Format Hyrox officiel : alternance de 8 blocs course (~1km) et 8 stations (SkiErg 1000m, Sled Push 50m, Sled Pull 50m, Burpee Broad Jumps 80m, Rowing 1000m, Farmers Carry 200m, Sandbag Lunges 100m, Wall Balls). Adapte le volume/charge au niveau et à la durée demandés, pas besoin de faire les 8 stations si la durée est courte.",
+  ATHX: "Format Athx : compétition hybride mêlant force fonctionnelle, gymnastique et engine, par zones/stations chronométrées, avec transitions rapides entre les postes.",
+  DEKA: "Format Deka (DEKA STRONG / DEKA FIT) : succession de zones (10 zones type) alternant course courte et stations de force fonctionnelle/cardio, effort continu par zone.",
+  MIXTE: "Séance hybride qui pioche dans les trois formats Hyrox, Athx et Deka pour varier les stimuli."
+};
+
+document.getElementById('generateBtn').addEventListener('click', generateCourse);
+document.getElementById('regenBtn').addEventListener('click', generateCourse);
+
+async function callGenerateCourse({discipline, duration, theme}){
+  const systemPrompt = `Tu es un coach expert Hyrox, Athx et Deka. Tu réponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni après, sans balises markdown, sans commentaire.
+Format exact attendu :
+{
+  "title": "nom court et percutant de la séance",
+  "discipline": "HYROX" | "ATHX" | "DEKA" | "MIXTE",
+  "duration_min": nombre entier,
+  "steps": [
+    {"name": "nom de l'exercice ou du bloc", "phase": "warmup" | "work" | "rest" | "cooldown", "duration_sec": nombre entier, "note": "consigne technique courte, une phrase max", "load_open": "charge standard Open, ex: 24kg", "load_pro": "charge standard Pro, ex: 32kg"}
+  ]
+}
+Règles :
+- "steps" est une liste plate et ordonnée du début à la fin de la séance (échauffement d'abord, puis le corps de séance en alternant work/rest si pertinent, puis le retour au calme).
+- Chaque step doit avoir un duration_sec réaliste et STRICTEMENT NUMÉRIQUE, jamais null, même pour un exercice basé sur des répétitions ou une distance (donne un temps cible réaliste, ex: 100 wall balls ~= 240 sec pour un niveau intermédiaire).
+- La somme des duration_sec doit être proche de duration_min * 60 (tolérance +/- 15%).
+- Entre 8 et 22 steps selon la durée.
+- Les noms d'exercices doivent être précis et réalistes (distances, reps) — SANS charge dans le nom, la charge va dans load_open/load_pro.
+- DOUBLE CHARGE OBLIGATOIRE : pour CHAQUE exercice qui implique un poids, une résistance ou une charge (sled, wall ball, kettlebell, sandbag, farmer carry, haltères, barre...), remplis "load_open" (charge standard officielle Open, accessible à tous) ET "load_pro" (charge standard officielle Pro, niveau compétition), en te basant sur les standards Hyrox/Deka réels quand tu les connais. Pour les exercices sans charge (course, burpees, jumping jacks, gainage...), laisse "load_open" et "load_pro" en chaîne vide "".
+- La séance est UNIQUE et sert à tous les niveaux en même temps : ce sont les deux charges affichées côte à côte sur la même feuille qui permettent à chacun de choisir Open ou Pro, pas deux séances séparées.
+- Si un bloc de la séance est un AMRAP (as many rounds as possible), c'est TOUJOURS UN SEUL step "work" avec duration_sec = le temps cap, et le contenu du tour décrit dans note (jamais développé en plusieurs steps, le nombre de tours étant variable). Même logique pour un EMOM sans contenu différent par minute : un seul step, duration_sec = durée totale.${equipmentText ? `
+- CONTRAINTE MATÉRIEL : le studio dispose STRICTEMENT du matériel suivant, n'utilise jamais un équipement en dehors de cette liste, adapte les exercices en conséquence : ${equipmentText.replace(/\n/g,', ')}` : ''}${referenceText ? `
+- STYLE DE RÉFÉRENCE : inspire-toi du format, du ton et des types d'exercices utilisés dans ces séances déjà données par le coach, pour rester cohérent avec ses habitudes :
+"""
+${referenceText}
+"""` : ''}`;
+
+  const userPrompt = `Génère une séance ${discipline}, durée cible ${duration} minutes.${theme ? " Focus/thème demandé : "+theme+"." : ""}
+${FORMAT_NOTES[discipline] || FORMAT_NOTES.MIXTE}`;
+
+  const parsed = await fetchGeminiJson(systemPrompt, userPrompt, 8000, (attempt, waitSec)=>{
+    const status = document.getElementById('genStatus');
+    if(status){ status.style.display='block'; status.style.color='var(--rest)'; status.textContent = `Quota gratuit atteint, nouvelle tentative dans ${waitSec}s (${attempt}/4)...`; }
+  });
+
+  if(!parsed.steps || !Array.isArray(parsed.steps) || parsed.steps.length === 0){
+    throw new Error("Réponse invalide");
+  }
+
+  return {
+    id: 'c' + Date.now() + Math.floor(Math.random()*1000),
+    title: parsed.title || "Séance sans titre",
+    discipline: parsed.discipline || discipline,
+    duration_min: parsed.duration_min || parseInt(duration),
+    steps: parsed.steps.map(s => ({
+      name: s.name || "Exercice",
+      phase: ["warmup","work","rest","cooldown"].includes(s.phase) ? s.phase : "work",
+      duration_sec: Math.max(5, parseInt(s.duration_sec) || 60),
+      note: s.note || "",
+      load_open: s.load_open || "",
+      load_pro: s.load_pro || ""
+    }))
+  };
+}
+
+async function generateCourse(){
+  const duration = document.getElementById('durationSelect').value;
+  const theme = document.getElementById('themeInput').value.trim();
+
+  const btn = document.getElementById('generateBtn');
+  const status = document.getElementById('genStatus');
+  btn.disabled = true;
+  status.style.display = 'block';
+  status.style.color = 'var(--rest)';
+  status.textContent = 'Génération en cours...';
+  document.getElementById('courseCard').style.display = 'none';
+
+  try{
+    currentGenerated = await callGenerateCourse({discipline: selectedDiscipline, duration, theme});
+    renderCourseCard(currentGenerated);
+    status.style.display = 'none';
+  }catch(err){
+    status.style.color = 'var(--work)';
+    status.textContent = "Erreur : " + (err && err.message ? err.message : String(err));
+    console.error(err);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function disciplineColorVar(d){
+  return {HYROX:'var(--hyrox)', ATHX:'var(--athx)', DEKA:'var(--deka)', MIXTE:'var(--mixte)'}[d] || 'var(--mixte)';
+}
+function disciplinePill(d){
+  const map = {
+    HYROX:{bg:'var(--hyrox)', fg:'#ffffff'},
+    ATHX:{bg:'var(--athx)', fg:'#ffffff'},
+    DEKA:{bg:'var(--deka)', fg:'#0d1730'},
+    MIXTE:{bg:'var(--mixte)', fg:'#0d1730'}
+  };
+  return map[d] || map.MIXTE;
+}
+
+function fmtTime(sec){
+  const m = Math.floor(sec/60);
+  const s = sec%60;
+  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+
+function renderCourseCard(course){
+  const card = document.getElementById('courseCard');
+  const pill = disciplinePill(course.discipline);
+  const badge = document.getElementById('cardBadge');
+  badge.textContent = course.discipline;
+  badge.style.background = pill.bg;
+  badge.style.color = pill.fg;
+  document.getElementById('cardTitle').textContent = course.title;
+  const totalSec = course.steps.reduce((a,s)=>a+s.duration_sec,0);
+  document.getElementById('cardMeta').textContent = `${fmtTime(totalSec)} · ${course.steps.length} blocs`;
+
+  const stepsList = document.getElementById('stepsList');
+  stepsList.innerHTML = '';
+  course.steps.forEach(s=>{
+    const row = document.createElement('div');
+    row.className = 'step-row';
+    row.innerHTML = `
+      <div class="phase-tag ${s.phase}">${PHASE_LABEL[s.phase]}</div>
+      <div>
+        <div class="step-name">${escapeHtml(s.name)}</div>
+        ${s.note ? `<div class="step-note">${escapeHtml(s.note)}</div>` : ''}
+        ${loadsHtml(s)}
+      </div>
+      <div class="step-dur mono">${fmtTime(s.duration_sec)}</div>
+    `;
+    stepsList.appendChild(row);
+  });
+  card.style.display = 'block';
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function loadsHtml(step){
+  if(!step.load_open && !step.load_pro) return '';
+  return `<div class="step-loads">${step.load_open ? `<span class="load-pill o">O ${escapeHtml(step.load_open)}</span>` : ''}${step.load_pro ? `<span class="load-pill p">P ${escapeHtml(step.load_pro)}</span>` : ''}</div>`;
+}
+
+/* Corrige les retours à la ligne / tabulations brutes que Gemini place parfois
+   à l'intérieur d'une chaîne JSON sans les échapper, ce qui casse JSON.parse. */
+function sanitizeJsonText(text){
+  let result = '';
+  let inString = false;
+  let escape = false;
+  for(let i=0;i<text.length;i++){
+    const ch = text[i];
+    if(inString){
+      if(escape){ result += ch; escape = false; continue; }
+      if(ch === '\\'){ result += ch; escape = true; continue; }
+      if(ch === '"'){ inString = false; result += ch; continue; }
+      if(ch === '\n'){ result += '\\n'; continue; }
+      if(ch === '\r'){ continue; }
+      if(ch === '\t'){ result += '\\t'; continue; }
+      result += ch;
+    }else{
+      if(ch === '"'){ inString = true; result += ch; continue; }
+      result += ch;
+    }
+  }
+  return result;
+}
+
+function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+/* Appelle Gemini et renvoie l'objet JSON parsé. Réessaie automatiquement
+   (avec un petit délai) en cas de quota gratuit temporairement dépassé (429),
+   au lieu de faire échouer l'appel direct. */
+async function fetchGeminiJson(systemPrompt, userPrompt, maxOutputTokens, onRetry){
+  if(!geminiApiKey){
+    throw new Error("Clé API Gemini manquante — renseigne-la dans l'onglet Matériel & style de séances.");
+  }
+  const maxAttempts = 4;
+  let lastErrorMessage = '';
+
+  for(let attempt=1; attempt<=maxAttempts; attempt++){
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiApiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: userPrompt }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { responseMimeType: "application/json", maxOutputTokens }
+      })
+    });
+    const data = await response.json();
+
+    const isQuotaError = data.error && (data.error.code === 429 || /quota/i.test(data.error.message||''));
+    if(isQuotaError){
+      lastErrorMessage = data.error.message || 'Quota dépassé';
+      if(attempt < maxAttempts){
+        const match = lastErrorMessage.match(/retry in ([\d.]+)s/i);
+        const waitSec = match ? Math.ceil(parseFloat(match[1])) + 2 : 15;
+        if(onRetry) onRetry(attempt, waitSec);
+        await sleep(waitSec * 1000);
+        continue;
+      }
+      throw new Error("Quota Gemini gratuit dépassé après plusieurs tentatives. Attends une minute et réessaie, ou passe en facturation activée sur ton projet Google AI Studio pour des limites plus hautes.");
+    }
+
+    if(data.error){ throw new Error(data.error.message || "Erreur API Gemini"); }
+    if(data.promptFeedback && data.promptFeedback.blockReason){
+      throw new Error("Réponse bloquée par Gemini (" + data.promptFeedback.blockReason + "), reformule le thème/focus.");
+    }
+
+    const candidate = data.candidates && data.candidates[0];
+    let text = candidate && candidate.content
+      ? candidate.content.parts.map(p=>p.text||"").join("\n")
+      : "";
+    text = text.replace(/```json|```/g, "").trim();
+    if(!text){
+      const reason = candidate ? candidate.finishReason : 'aucune réponse';
+      throw new Error("Réponse vide de l'IA (" + reason + "). Réessaie, ou raccourcis la durée/le thème.");
+    }
+
+    try{ return JSON.parse(text); }
+    catch(e){
+      try{ return JSON.parse(sanitizeJsonText(text)); }
+      catch(e2){
+        const reason = candidate ? candidate.finishReason : 'inconnue';
+        throw new Error("JSON invalide (raison: " + reason + ") — réessaie, ou raccourcis la demande.");
+      }
+    }
+  }
+  throw new Error(lastErrorMessage || "Échec de la génération après plusieurs tentatives.");
+}
+
+document.getElementById('saveCourseBtn').addEventListener('click', async ()=>{
+  if(!currentGenerated) return;
+  courses.push(currentGenerated);
+  await saveCourseToStorage(currentGenerated);
+  renderLibrary();
+  const status = document.getElementById('genStatus');
+  status.style.display = 'block';
+  status.style.color = 'var(--rest)';
+  status.textContent = 'Enregistré dans la bibliothèque.';
+  setTimeout(()=>{status.style.display='none';}, 2000);
+});
+
+/* ---------------------------------------------------------------
+   LIBRARY RENDER (créateur + tv)
+--------------------------------------------------------------- */
+function renderLibrary(){
+  [['libGridCreer','libEmptyCreer', false], ['libGridTv','libEmptyTv', true]].forEach(([gridId, emptyId, isTv])=>{
+    const grid = document.getElementById(gridId);
+    const empty = document.getElementById(emptyId);
+    grid.innerHTML = '';
+    if(courses.length === 0){ empty.style.display='block'; return; }
+    empty.style.display = 'none';
+    courses.slice().reverse().forEach(c=>{
+      const totalSec = c.steps.reduce((a,s)=>a+s.duration_sec,0);
+      const el = document.createElement('div');
+      el.className = 'lib-card';
+      const pill = disciplinePill(c.discipline);
+      el.innerHTML = `
+        <span class="badge" style="background:${pill.bg};color:${pill.fg};">${c.discipline}</span>
+        <h3>${escapeHtml(c.title)}</h3>
+        <div class="meta">${fmtTime(totalSec)} · ${c.steps.length} blocs</div>
+      `;
+      el.addEventListener('click', ()=>{
+        if(isTv){
+          if(tvDispatchMode === 'remote'){ selectForRemote(c); }
+          else{ launchTv(c); }
+        } else {
+          renderCourseCard(c); currentGenerated = c; window.scrollTo({top: document.getElementById('courseCard').offsetTop - 40, behavior:'smooth'});
+        }
+      });
+      grid.appendChild(el);
+    });
+  });
+  refreshAllDaySelects();
+}
+
+/* ---------------------------------------------------------------
+   MATÉRIEL
+--------------------------------------------------------------- */
+document.getElementById('saveEquipmentBtn').addEventListener('click', async ()=>{
+  equipmentText = document.getElementById('equipmentArea').value.trim();
+  referenceText = document.getElementById('referenceArea').value.trim();
+  geminiApiKey = document.getElementById('geminiKeyInput').value.trim();
+  await window.storage.set('settings:equipment', equipmentText);
+  await window.storage.set('settings:reference', referenceText);
+  await window.storage.set('settings:geminiKey', geminiApiKey);
+  const status = document.getElementById('eqStatus');
+  status.style.display = 'block';
+  status.textContent = 'Enregistré — l\'IA en tiendra compte pour toutes les prochaines générations.';
+  setTimeout(()=>{status.style.display='none';}, 2500);
+});
+
+/* ---------------------------------------------------------------
+   PLANNING MENSUEL — piloté par le planning hebdomadaire réel
+--------------------------------------------------------------- */
+const WEEKDAY_SHORT = ["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
+const WEEKDAY_LONG = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
+const WEEK_KEYS = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"]; // mondayIndex 0..6
+const DISCIPLINES_ALL = ["HYROX","ATHX","DEKA"];
+
+function renderWeekTemplateEditor(){
+  const grid = document.getElementById('weekTemplateGrid');
+  grid.innerHTML = '';
+  WEEK_KEYS.forEach(dayKey=>{
+    const col = document.createElement('div');
+    col.className = 'wt-day';
+    const label = document.createElement('div');
+    label.className = 'wt-label';
+    label.textContent = dayKey;
+    col.appendChild(label);
+    DISCIPLINES_ALL.forEach(disc=>{
+      const chip = document.createElement('div');
+      const active = weeklyTemplate[dayKey].includes(disc);
+      chip.className = 'wt-chip' + (active ? ' active' : '');
+      chip.dataset.d = disc;
+      chip.textContent = disc;
+      chip.addEventListener('click', async ()=>{
+        const list = weeklyTemplate[dayKey];
+        const idx = list.indexOf(disc);
+        if(idx === -1) list.push(disc); else list.splice(idx,1);
+        await window.storage.set('planning:weeklyTemplate', JSON.stringify(weeklyTemplate));
+        renderWeekTemplateEditor();
+      });
+      col.appendChild(chip);
+    });
+    grid.appendChild(col);
+  });
+}
+
+document.getElementById('generatePlanBtn').addEventListener('click', generateMonthPlan);
+
+async function generateMonthPlan(){
+  const duration = document.getElementById('planDurationSelect').value;
+  const monthTheme = document.getElementById('planThemeInput').value.trim();
+
+  const btn = document.getElementById('generatePlanBtn');
+  const status = document.getElementById('planGenStatus');
+  btn.disabled = true;
+  status.style.display = 'block';
+  status.style.color = 'var(--rest)';
+  status.textContent = 'Construction de la programmation du mois...';
+
+  // build 30 consecutive days from today, chaque jour porte les disciplines de son planning hebdo
+  const days = [];
+  const today = new Date(); today.setHours(0,0,0,0);
+  for(let i=0;i<30;i++){
+    const d = new Date(today);
+    d.setDate(today.getDate()+i);
+    const jsDay = d.getDay(); // 0=Sun..6=Sat
+    const mondayIndex = (jsDay+6)%7; // 0=Mon..6=Sun
+    const dayKey = WEEK_KEYS[mondayIndex];
+    const disciplinesToday = weeklyTemplate[dayKey] || [];
+    days.push({
+      dateISO: d.toISOString().slice(0,10),
+      dateLabel: d.getDate()+' '+d.toLocaleDateString('fr-FR',{month:'short'}).replace('.',''),
+      weekdayShort: WEEKDAY_SHORT[jsDay],
+      weekdayLong: WEEKDAY_LONG[jsDay],
+      mondayIndex,
+      isTrain: disciplinesToday.length > 0,
+      slots: disciplinesToday.map(disc=>({ discipline: disc, title:null, focus:null, courseId:null }))
+    });
+  }
+
+  // liste plate de tous les slots (jour+discipline) à remplir par l'IA — une entrée par discipline par jour, pas par créneau horaire
+  const flatSlots = [];
+  days.forEach(day=>{ day.slots.forEach(slot=>{ flatSlots.push({ day, slot }); }); });
+
+  if(flatSlots.length === 0){
+    status.style.color = 'var(--work)';
+    status.textContent = "Aucune discipline cochée dans ton planning hebdomadaire ci-dessus.";
+    btn.disabled = false;
+    return;
+  }
+
+  try{
+    const systemPrompt = `Tu es un coach expert Hyrox, Athx et Deka qui construit une programmation mensuelle cohérente pour un studio. Réponds UNIQUEMENT avec un objet JSON valide, sans texte ni markdown.
+Format exact : {"items":[{"title":"...", "focus":"phrase courte sur l'objectif du jour"}]}
+La liste "items" doit contenir EXACTEMENT ${flatSlots.length} éléments, dans l'ordre donné ci-dessous (un élément = une discipline précise, un jour précis — la discipline est déjà fixée, ne la redemande pas).
+Consignes de périodisation :
+- Chaque séance sert pour TOUS les créneaux horaires de cette discipline ce jour-là (le studio programme plusieurs horaires par jour avec le même contenu) — construis donc des séances solides, pas des variations mineures.
+- Pour une même discipline qui revient plusieurs fois par semaine (ex: Hyrox le lundi et le mercredi), varie le contenu d'une occurrence à l'autre dans la même semaine.
+- Augmente progressivement l'intensité/le volume au fil des 4 semaines (semaine 4 peut être un peu plus légère si besoin, façon deload).
+- Titres courts et percutants, focus en une phrase.
+- La variante de charge est "Open" ou "Pro" (standards officiels) : structure accessible à tous niveaux, seule la charge change.${monthTheme ? `
+- OBJECTIF PRIORITAIRE DU MOIS, à respecter dans TOUTES les séances : ${monthTheme}` : ''}${equipmentText ? `
+- Matériel disponible, à respecter strictement : ${equipmentText.replace(/\n/g,', ')}` : ''}${referenceText ? `
+- Style de référence à respecter, inspiré des séances déjà données par le coach :
+"""
+${referenceText}
+"""` : ''}`;
+
+    const userPrompt = `Programmation, séances de ${duration} minutes.
+Liste des séances à construire, dans l'ordre : ${flatSlots.map((fs,i)=>(i+1)+'. Semaine '+(Math.floor(i/7)+1)+' — '+fs.day.weekdayLong+' — '+fs.slot.discipline).join(' | ')}${equipmentText ? `
+Matériel disponible : ${equipmentText.replace(/\n/g,', ')}` : ''}`;
+
+    const parsed = await fetchGeminiJson(systemPrompt, userPrompt, 8000, (attempt, waitSec)=>{
+      status.style.color = 'var(--rest)';
+      status.textContent = `Quota gratuit atteint, nouvelle tentative dans ${waitSec}s (${attempt}/4)...`;
+    });
+    if(!parsed.items || !Array.isArray(parsed.items)) throw new Error("Réponse invalide");
+
+    flatSlots.forEach((fs, i)=>{
+      const item = parsed.items[i];
+      fs.slot.title = (item && item.title) || `${fs.slot.discipline} — ${fs.day.weekdayShort}`;
+      fs.slot.focus = (item && item.focus) || '';
+    });
+
+    planSkeleton = { duration, generatedAt: Date.now(), days };
+    await savePlanningSkeleton();
+    renderPlanningCalendar();
+    status.textContent = 'Programmation générée. Clique sur une discipline pour la détailler en cours complet.';
+    setTimeout(()=>{status.style.display='none';}, 4000);
+  }catch(err){
+    status.style.color = 'var(--work)';
+    status.textContent = "Erreur : " + (err && err.message ? err.message : String(err));
+    console.error(err);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function generatePlanDetail(slot, slotEl){
+  slotEl.querySelector('.cstate').textContent = 'Génération...';
+  try{
+    const course = await callGenerateCourse({
+      discipline: slot.discipline,
+      duration: planSkeleton.duration,
+      theme: slot.title + (slot.focus ? ' — '+slot.focus : '')
+    });
+    courses.push(course);
+    await saveCourseToStorage(course);
+    slot.courseId = course.id;
+    await savePlanningSkeleton();
+    renderLibrary();
+    renderPlanningCalendar();
+  }catch(err){
+    slotEl.querySelector('.cstate').textContent = 'Erreur, réessaie';
+    console.error(err);
+  }
+}
+
+function renderPlanningCalendar(){
+  const container = document.getElementById('monthCalendar');
+  container.innerHTML = '';
+  if(!planSkeleton || !planSkeleton.days || planSkeleton.days.length===0){
+    container.innerHTML = '<div class="lib-empty">Aucune programmation générée. Configure ton planning hebdo ci-dessus et clique sur « Générer le mois ».</div>';
+    return;
+  }
+
+  const header = document.createElement('div');
+  header.className = 'cal-grid';
+  header.style.marginBottom = '4px';
+  WEEK_KEYS.forEach(d=>{
+    const h = document.createElement('div');
+    h.style.cssText = 'font-family:Inter,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);text-align:center;padding:0 0 4px;';
+    h.textContent = d;
+    header.appendChild(h);
+  });
+  container.appendChild(header);
+
+  const days = planSkeleton.days;
+  let weeks = [];
+  let current = [];
+  days.forEach(d=>{
+    current.push(d);
+    if(d.mondayIndex === 6){ weeks.push(current); current = []; }
+  });
+  if(current.length) weeks.push(current);
+
+  weeks.forEach((week, wi)=>{
+    const block = document.createElement('div');
+    block.className = 'week-block';
+    const grid = document.createElement('div');
+    grid.className = 'cal-grid';
+
+    if(wi===0 && week[0].mondayIndex>0){
+      for(let p=0;p<week[0].mondayIndex;p++){
+        const pad = document.createElement('div');
+        pad.style.cssText='border:none;background:transparent;min-height:0;';
+        grid.appendChild(pad);
+      }
+    }
+
+    week.forEach(day=>{
+      const cell = document.createElement('div');
+      cell.className = 'cal-cell ' + (day.isTrain ? '' : 'rest');
+      const dateEl = document.createElement('div');
+      dateEl.className = 'cdate';
+      dateEl.textContent = day.weekdayShort + ' ' + day.dateLabel;
+      cell.appendChild(dateEl);
+
+      if(!day.isTrain){
+        const note = document.createElement('div');
+        note.className = 'cnote';
+        note.textContent = 'Pas de cours ce jour';
+        cell.appendChild(note);
+      }else{
+        day.slots.forEach(slot=>{
+          const course = slot.courseId ? courses.find(c=>c.id===slot.courseId) : null;
+          const pill = disciplinePill(slot.discipline);
+          const slotEl = document.createElement('div');
+          slotEl.className = 'cal-slot';
+          slotEl.innerHTML = `
+            <span class="cbadge" style="background:${pill.bg};color:${pill.fg};">${slot.discipline}</span>
+            <div class="ctitle">${escapeHtml(slot.title||'')}</div>
+            <div class="cnote">${escapeHtml(slot.focus||'')}</div>
+            ${course ? '<div class="ctv">▶ Diffuser</div>' : '<div class="cstate">Cliquer pour générer</div>'}
+          `;
+          slotEl.addEventListener('click', ()=>{
+            if(course){ launchTv(course); }
+            else{ generatePlanDetail(slot, slotEl); }
+          });
+          cell.appendChild(slotEl);
+        });
+      }
+      grid.appendChild(cell);
+    });
+
+    block.appendChild(grid);
+    container.appendChild(block);
+  });
+}
+
+
+document.getElementById('addClientBtn').addEventListener('click', addClient);
+document.getElementById('newClientInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addClient(); });
+
+async function addClient(){
+  const input = document.getElementById('newClientInput');
+  const name = input.value.trim();
+  if(!name) return;
+  const client = { id: 'cl'+Date.now(), name, plan:{} };
+  clients.push(client);
+  await saveClientToStorage(client);
+  input.value = '';
+  renderClients();
+}
+
+function renderClients(){
+  const list = document.getElementById('clientList');
+  list.innerHTML = '';
+  clients.slice().reverse().forEach(cl=>{
+    const assignedCount = Object.values(cl.plan||{}).filter(Boolean).length;
+    const row = document.createElement('div');
+    row.className = 'client-row';
+    row.innerHTML = `
+      <div><div class="cname">${escapeHtml(cl.name)}</div><div class="csub">${assignedCount} séance(s) programmée(s)</div></div>
+      <div class="csub">Ouvrir →</div>
+    `;
+    row.addEventListener('click', ()=>openPlanner(cl.id));
+    list.appendChild(row);
+  });
+}
+
+function openPlanner(clientId){
+  openClientId = clientId;
+  const client = clients.find(c=>c.id===clientId);
+  if(!client) return;
+  document.getElementById('planner').style.display = 'block';
+  document.getElementById('plannerClientName').textContent = client.name;
+  const grid = document.getElementById('weekGrid');
+  grid.innerHTML = '';
+  DAYS.forEach(day=>{
+    const cell = document.createElement('div');
+    cell.className = 'day-cell';
+    const assignedId = client.plan ? client.plan[day] : null;
+    const assignedCourse = courses.find(c=>c.id===assignedId);
+    cell.innerHTML = `
+      <div class="dname">${day}</div>
+      <select data-day="${day}">
+        <option value="">— Aucune —</option>
+        ${courses.map(c=>`<option value="${c.id}" ${c.id===assignedId?'selected':''}>${escapeHtml(c.title)}</option>`).join('')}
+      </select>
+      <div class="day-assigned">${assignedCourse ? assignedCourse.discipline : ''}</div>
+    `;
+    const select = cell.querySelector('select');
+    select.addEventListener('change', async ()=>{
+      client.plan = client.plan || {};
+      client.plan[day] = select.value || null;
+      await saveClientToStorage(client);
+      openPlanner(clientId); // re-render to refresh discipline label
+    });
+    grid.appendChild(cell);
+  });
+  window.scrollTo({top: document.getElementById('planner').offsetTop - 20, behavior:'smooth'});
+}
+
+document.getElementById('closeplannerBtn').addEventListener('click', ()=>{
+  document.getElementById('planner').style.display = 'none';
+  openClientId = null;
+});
+
+function refreshAllDaySelects(){
+  if(openClientId) openPlanner(openClientId);
+}
+
+/* ---------------------------------------------------------------
+   TV MODE
+--------------------------------------------------------------- */
+let tvSequence = [];
+let tvIndex = 0;
+let tvRemaining = 0;
+let tvTimerHandle = null;
+let tvPaused = false;
+let audioCtx = null;
+
+function beep(freq, dur){
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.frequency.value = freq;
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    osc.start();
+    osc.stop(audioCtx.currentTime + dur);
+  }catch(e){}
+}
+
+function phaseColorVar(phase){
+  return {warmup:'var(--warmup)', work:'var(--work)', rest:'var(--rest)', cooldown:'var(--cooldown)'}[phase];
+}
+
+let currentTvCourse = null;
+
+function launchTv(course){
+  currentTvCourse = course;
+  tvSequence = course.steps;
+  tvIndex = 0;
+  document.getElementById('tvOverlay').classList.add('active');
+  const el = document.getElementById('tvOverlay');
+  if(el.requestFullscreen){ el.requestFullscreen().catch(()=>{}); }
+  showTvPreview(course);
+}
+
+function showTvPreview(course){
+  clearInterval(tvTimerHandle);
+  document.getElementById('tvRunView').classList.remove('active');
+  document.getElementById('tvPreviewView').classList.add('active');
+
+  const pill = disciplinePill(course.discipline);
+  const badge = document.getElementById('tvPreviewBadge');
+  badge.textContent = course.discipline;
+  badge.style.background = pill.bg;
+  badge.style.color = pill.fg;
+
+  document.getElementById('tvPreviewTitle').textContent = course.title;
+  const totalSec = course.steps.reduce((a,s)=>a+s.duration_sec,0);
+  document.getElementById('tvPreviewMeta').textContent = `${fmtTime(totalSec)} · ${course.steps.length} blocs`;
+
+  const list = document.getElementById('tvPreviewList');
+  list.innerHTML = '';
+  list.classList.toggle('compact', course.steps.length > 14);
+  course.steps.forEach(s=>{
+    const row = document.createElement('div');
+    row.className = 'step-row';
+    row.innerHTML = `
+      <div class="phase-tag ${s.phase}">${PHASE_LABEL[s.phase]}</div>
+      <div>
+        <div class="step-name">${escapeHtml(s.name)}</div>
+        ${s.note ? `<div class="step-note">${escapeHtml(s.note)}</div>` : ''}
+        ${loadsHtml(s)}
+      </div>
+      <div class="step-dur mono">${fmtTime(s.duration_sec)}</div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+document.getElementById('tvStartBtn').addEventListener('click', ()=>{
+  document.getElementById('tvPreviewView').classList.remove('active');
+  document.getElementById('tvRunView').classList.add('active');
+  startStep(0);
+});
+document.getElementById('tvBackToList').addEventListener('click', ()=>{
+  if(currentTvCourse) showTvPreview(currentTvCourse);
+});
+
+function startStep(idx){
+  if(idx >= tvSequence.length){
+    document.getElementById('tvPhase').textContent = 'Terminé';
+    document.getElementById('tvPhase').style.color = 'var(--rest)';
+    document.getElementById('tvName').textContent = 'Séance terminée 👊';
+    document.getElementById('tvClock').textContent = '00:00';
+    document.getElementById('tvNext').textContent = '';
+    document.getElementById('tvBarFill').style.width = '100%';
+    clearInterval(tvTimerHandle);
+    beep(880, 0.4);
+    return;
+  }
+  tvIndex = idx;
+  const step = tvSequence[idx];
+  tvRemaining = step.duration_sec;
+  tvPaused = false;
+  document.getElementById('tvPlayPause').textContent = 'Pause';
+
+  const color = phaseColorVar(step.phase);
+  const phaseEl = document.getElementById('tvPhase');
+  phaseEl.textContent = PHASE_LABEL[step.phase];
+  phaseEl.style.background = color;
+  phaseEl.style.color = (step.phase === 'work' || step.phase === 'cooldown') ? '#ffffff' : '#0d1730';
+  document.getElementById('tvName').textContent = step.name;
+  document.getElementById('tvRunLoads').innerHTML = loadsHtml(step);
+  document.getElementById('tvBarFill').style.background = color;
+
+  const next = tvSequence[idx+1];
+  document.getElementById('tvNext').textContent = next ? `Suivant : ${next.name}` : 'Dernier bloc';
+
+  updateClock();
+  beep(660, 0.15);
+
+  clearInterval(tvTimerHandle);
+  tvTimerHandle = setInterval(()=>{
+    if(tvPaused) return;
+    tvRemaining--;
+    if(tvRemaining <= 3 && tvRemaining > 0) beep(520, 0.1);
+    if(tvRemaining <= 0){
+      startStep(idx+1);
+      return;
+    }
+    updateClock();
+  }, 1000);
+}
+
+function updateClock(){
+  document.getElementById('tvClock').textContent = fmtTime(Math.max(0,tvRemaining));
+  const step = tvSequence[tvIndex];
+  const pct = step ? (1 - (tvRemaining/step.duration_sec)) * 100 : 0;
+  document.getElementById('tvBarFill').style.width = pct + '%';
+}
+
+document.getElementById('tvPlayPause').addEventListener('click', ()=>{
+  tvPaused = !tvPaused;
+  document.getElementById('tvPlayPause').textContent = tvPaused ? 'Reprendre' : 'Pause';
+});
+document.getElementById('tvSkip').addEventListener('click', ()=>{ startStep(tvIndex+1); });
+document.getElementById('tvRestart').addEventListener('click', ()=>{ startStep(0); });
+document.getElementById('tvExit').addEventListener('click', exitTv);
+
+function exitTv(){
+  clearInterval(tvTimerHandle);
+  document.getElementById('tvOverlay').classList.remove('active');
+  document.getElementById('tvRunView').classList.remove('active');
+  document.getElementById('tvPreviewView').classList.remove('active');
+  if(document.fullscreenElement){ document.exitFullscreen().catch(()=>{}); }
+}
+document.addEventListener('fullscreenchange', ()=>{
+  if(!document.fullscreenElement && document.getElementById('tvOverlay').classList.contains('active')){
+    // user exited fullscreen (esc key) — keep overlay but stop demanding fullscreen again
+  }
+});
+
+/* ---------------------------------------------------------------
+   REMOTE CONTROL (tablette → TV via stockage partagé)
+--------------------------------------------------------------- */
+let selectedRemoteCourse = null;
+
+async function pushLiveState(action, extra={}){
+  const state = Object.assign({ action, seq: Date.now(), updatedAt: Date.now() }, extra);
+  try{ await window.storage.set('live:tvstate', JSON.stringify(state), true); }catch(e){ console.error(e); }
+  return state;
+}
+
+function selectForRemote(course){
+  selectedRemoteCourse = course;
+  document.getElementById('remotePanel').classList.add('active');
+  document.getElementById('rpTitle').textContent = course.title;
+  document.getElementById('rpStatus').textContent = 'Envoi à la TV...';
+  document.getElementById('rpPause').textContent = 'Pause';
+  pushLiveState('preview', {course}).then(()=>{
+    document.getElementById('rpStatus').textContent = 'Reçu par la TV — clique Démarrer quand tu es prêt';
+  });
+  document.getElementById('remotePanel').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+let rpPaused = false;
+document.getElementById('rpStart').addEventListener('click', ()=>{
+  pushLiveState('start', {});
+  document.getElementById('rpStatus').textContent = 'Séance lancée sur la TV';
+  rpPaused = false;
+  document.getElementById('rpPause').textContent = 'Pause';
+});
+document.getElementById('rpPause').addEventListener('click', ()=>{
+  rpPaused = !rpPaused;
+  pushLiveState(rpPaused ? 'pause' : 'resume', {});
+  document.getElementById('rpPause').textContent = rpPaused ? 'Reprendre' : 'Pause';
+  document.getElementById('rpStatus').textContent = rpPaused ? 'En pause sur la TV' : 'Séance en cours sur la TV';
+});
+document.getElementById('rpSkip').addEventListener('click', ()=>{
+  pushLiveState('skip', {});
+  document.getElementById('rpStatus').textContent = 'Passage au bloc suivant...';
+});
+document.getElementById('rpRestart').addEventListener('click', ()=>{
+  pushLiveState('restart', {});
+  rpPaused = false;
+  document.getElementById('rpPause').textContent = 'Pause';
+  document.getElementById('rpStatus').textContent = 'Séance relancée depuis le début';
+});
+document.getElementById('rpExit').addEventListener('click', ()=>{
+  pushLiveState('exit', {});
+  document.getElementById('remotePanel').classList.remove('active');
+  selectedRemoteCourse = null;
+});
+
+/* ---------------------------------------------------------------
+   TV KIOSK MODE (écran de la TV, piloté à distance)
+--------------------------------------------------------------- */
+let lastAppliedSeq = 0;
+
+function bootTvKiosk(){
+  document.body.classList.add('kiosk-mode');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('tvOverlay').classList.add('active');
+  document.getElementById('tvIdleView').classList.add('active');
+
+  if(rotateParam === '90'){ document.getElementById('tvOverlay').classList.add('rotate-90'); document.documentElement.classList.add('has-rotation'); }
+  if(rotateParam === '270'){ document.getElementById('tvOverlay').classList.add('rotate-270'); document.documentElement.classList.add('has-rotation'); }
+
+  window.liveStateRef.onSnapshot((doc)=>{
+    if(!doc.exists) return;
+    let state = null;
+    try{ state = JSON.parse(doc.data().value); }catch(e){ return; }
+    if(!state || !state.seq || state.seq === lastAppliedSeq) return;
+    lastAppliedSeq = state.seq;
+    applyLiveState(state);
+  }, (err)=>{ console.error('live sync error', err); });
+}
+
+function applyLiveState(state){
+  switch(state.action){
+    case 'preview':
+      currentTvCourse = state.course;
+      tvSequence = state.course.steps;
+      tvIndex = 0;
+      document.getElementById('tvIdleView').classList.remove('active');
+      showTvPreview(state.course);
+      break;
+    case 'start':
+      document.getElementById('tvIdleView').classList.remove('active');
+      document.getElementById('tvPreviewView').classList.remove('active');
+      document.getElementById('tvRunView').classList.add('active');
+      startStep(0);
+      break;
+    case 'pause':
+      tvPaused = true;
+      break;
+    case 'resume':
+      tvPaused = false;
+      break;
+    case 'skip':
+      startStep(tvIndex+1);
+      break;
+    case 'restart':
+      startStep(0);
+      break;
+    case 'exit':
+      clearInterval(tvTimerHandle);
+      document.getElementById('tvPreviewView').classList.remove('active');
+      document.getElementById('tvRunView').classList.remove('active');
+      document.getElementById('tvIdleView').classList.add('active');
+      currentTvCourse = null;
+      tvSequence = [];
+      break;
+  }
+}
+
+/* ---------------------------------------------------------------
+   INIT
+--------------------------------------------------------------- */
+if(isTvKiosk){
+  bootTvKiosk();
+}else{
+  loadAll();
+}
+</script>
+</body>
+</html>
