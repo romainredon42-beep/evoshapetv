@@ -274,6 +274,14 @@
   #tvOverlay.rotate-90{ transform:translate(-50%,-50%) rotate(90deg); }
   #tvOverlay.rotate-270{ transform:translate(-50%,-50%) rotate(270deg); }
 
+  .tv-list-overlay{
+    position:absolute;inset:0;z-index:20;display:none;
+    flex-direction:column;align-items:center;justify-content:flex-start;
+    padding:50px 20px;overflow-y:auto;
+    background:rgba(7,13,30,0.98);backdrop-filter:blur(6px);
+  }
+  .tv-list-overlay.active{display:flex;}
+
   .tv-run-view, .tv-preview-view{display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;}
   .tv-run-view.active, .tv-preview-view.active{display:flex;}
 
@@ -307,7 +315,7 @@
   .tv-idle-view .logomark{width:clamp(50px,9vmax,110px);height:clamp(50px,9vmax,110px);margin-bottom:28px;opacity:0.9;}
   .tv-idle-view .idle-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(20px,4vmax,34px);color:#ffffff;margin-bottom:12px;}
   .tv-idle-view .idle-sub{font-family:'Inter',sans-serif;font-size:clamp(12px,1.8vmax,16px);color:#65708e;max-width:500px;line-height:1.6;}
-  .kiosk-mode .tv-controls, .kiosk-mode #tvExit, .kiosk-mode #tvStartBtn{display:none !important;}
+  .kiosk-mode .tv-controls, .kiosk-mode #tvExit, .kiosk-mode #tvStartBtn, .kiosk-mode #tvListOverlayClose{display:none !important;}
 
   /* ---------- remote control panel (tablet side) ---------- */
   .remote-modeswitch{display:flex;gap:8px;margin-bottom:24px;}
@@ -622,6 +630,12 @@ cooldown étirements 5min"></textarea>
       <button id="tvRestart">Relancer</button>
       <button id="tvBackToList">Voir la liste</button>
     </div>
+  </div>
+
+  <div id="tvListOverlay" class="tv-list-overlay">
+    <div class="tv-name" id="tvListOverlayTitle" style="margin-bottom:18px;"></div>
+    <div class="tv-preview-list" id="tvListOverlayList"></div>
+    <button class="ghost" id="tvListOverlayClose" style="margin-top:24px;">Retour au chrono</button>
   </div>
 </div>
 
@@ -1564,9 +1578,29 @@ function launchTv(course){
   showTvPreview(course);
 }
 
+function renderStepListInto(listEl, steps, currentIdx){
+  listEl.innerHTML = '';
+  listEl.classList.toggle('compact', steps.length > 14);
+  steps.forEach((s, idx)=>{
+    const row = document.createElement('div');
+    row.className = 'step-row' + (idx === currentIdx ? ' current' : '');
+    row.innerHTML = `
+      <div class="phase-tag ${s.phase}">${PHASE_LABEL[s.phase]}</div>
+      <div>
+        <div class="step-name">${escapeHtml(s.name)}</div>
+        ${s.note ? `<div class="step-note">${escapeHtml(s.note)}</div>` : ''}
+        ${loadsHtml(s)}
+      </div>
+      <div class="step-dur mono">${fmtTime(s.duration_sec)}</div>
+    `;
+    listEl.appendChild(row);
+  });
+}
+
 function showTvPreview(course){
   clearInterval(tvTimerHandle);
   document.getElementById('tvRunView').classList.remove('active');
+  document.getElementById('tvListOverlay').classList.remove('active');
   document.getElementById('tvPreviewView').classList.add('active');
 
   const pill = disciplinePill(course.discipline);
@@ -1579,23 +1613,23 @@ function showTvPreview(course){
   const totalSec = course.steps.reduce((a,s)=>a+s.duration_sec,0);
   document.getElementById('tvPreviewMeta').textContent = `${fmtTime(totalSec)} · ${course.steps.length} blocs`;
 
-  const list = document.getElementById('tvPreviewList');
-  list.innerHTML = '';
-  list.classList.toggle('compact', course.steps.length > 14);
-  course.steps.forEach(s=>{
-    const row = document.createElement('div');
-    row.className = 'step-row';
-    row.innerHTML = `
-      <div class="phase-tag ${s.phase}">${PHASE_LABEL[s.phase]}</div>
-      <div>
-        <div class="step-name">${escapeHtml(s.name)}</div>
-        ${s.note ? `<div class="step-note">${escapeHtml(s.note)}</div>` : ''}
-        ${loadsHtml(s)}
-      </div>
-      <div class="step-dur mono">${fmtTime(s.duration_sec)}</div>
-    `;
-    list.appendChild(row);
-  });
+  renderStepListInto(document.getElementById('tvPreviewList'), course.steps, -1);
+}
+
+/* Affiche/masque la liste des exercices PAR-DESSUS le chrono en cours,
+   sans jamais toucher au minuteur (contrairement à showTvPreview qui est
+   réservée à l'écran d'avant-démarrage). */
+function toggleRunListOverlay(){
+  const overlay = document.getElementById('tvListOverlay');
+  if(overlay.classList.contains('active')){
+    overlay.classList.remove('active');
+    return;
+  }
+  if(currentTvCourse){
+    document.getElementById('tvListOverlayTitle').textContent = currentTvCourse.title;
+    renderStepListInto(document.getElementById('tvListOverlayList'), tvSequence, tvIndex);
+  }
+  overlay.classList.add('active');
 }
 
 document.getElementById('tvStartBtn').addEventListener('click', ()=>{
@@ -1603,9 +1637,8 @@ document.getElementById('tvStartBtn').addEventListener('click', ()=>{
   document.getElementById('tvRunView').classList.add('active');
   startStep(0);
 });
-document.getElementById('tvBackToList').addEventListener('click', ()=>{
-  if(currentTvCourse) showTvPreview(currentTvCourse);
-});
+document.getElementById('tvBackToList').addEventListener('click', toggleRunListOverlay);
+document.getElementById('tvListOverlayClose').addEventListener('click', toggleRunListOverlay);
 
 function startStep(idx){
   if(idx >= tvSequence.length){
