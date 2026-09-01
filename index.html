@@ -347,6 +347,86 @@
     margin-bottom:18px;white-space:pre-line;
   }
   .tv-note:empty{display:none;}
+
+  /* ---------- TV run: bloc en cours + programme global ---------- */
+  .tv-current-block{
+    width:min(66vw,900px);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    padding:8px 24px 0;
+  }
+  .tv-block-label{
+    font-family:'Space Mono',monospace;
+    font-size:clamp(12px,1.8vmax,17px);
+    font-weight:700;
+    letter-spacing:0.14em;
+    color:#7aa0ff;
+    margin-bottom:8px;
+    text-transform:uppercase;
+  }
+  .tv-exercises-title{
+    font-family:'Inter',sans-serif;
+    font-size:clamp(10px,1.4vmax,13px);
+    font-weight:800;
+    letter-spacing:0.12em;
+    color:#65708e;
+    margin-top:4px;
+    margin-bottom:8px;
+  }
+  .tv-current-block .tv-name{
+    margin-bottom:6px;
+  }
+  .tv-current-block .tv-note{
+    margin-bottom:6px;
+    max-width:min(68vw,900px);
+  }
+  .rs-legend{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin:0 0 10px;
+    font-family:'Inter',sans-serif;
+    font-size:10px;
+    color:#65708e;
+  }
+  .rs-legend span{
+    display:flex;
+    align-items:center;
+    gap:5px;
+  }
+  .dot{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    display:inline-block;
+    background:#65708e;
+  }
+  .dot.done{background:#3ee6c8;}
+  .dot.current{background:#4d7fff;}
+  .dot.todo{background:#65708e;}
+  .tv-run-summary .rs-item{
+    border-left:3px solid transparent;
+  }
+  .tv-run-summary .rs-item.done{
+    border-left-color:#3ee6c8;
+  }
+  .tv-run-summary .rs-item.current{
+    border-left-color:#4d7fff;
+  }
+  .tv-run-summary .rs-status{
+    font-family:'Inter',sans-serif;
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    margin-top:4px;
+    color:#65708e;
+  }
+  .tv-run-summary .rs-item.done .rs-status{color:#3ee6c8;}
+  .tv-run-summary .rs-item.current .rs-status{color:#7aa0ff;}
+
   .tv-controls{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);display:flex;gap:10px;}
 
   /* ---------- TV run: résumé des exercices ---------- */
@@ -638,21 +718,34 @@ cooldown étirements 5min"></textarea>
 
   <div id="tvRunView" class="tv-run-view">
     <div class="tv-phase" id="tvPhase">Prêt</div>
-    <div class="tv-name" id="tvName">—</div>
-    <div class="tv-run-loads" id="tvRunLoads"></div>
-    <div class="tv-note" id="tvNote"></div>
+
+    <div class="tv-current-block">
+      <div class="tv-block-label" id="tvBlockLabel">BLOC 1</div>
+      <div class="tv-name" id="tvName">—</div>
+      <div class="tv-run-loads" id="tvRunLoads"></div>
+      <div class="tv-exercises-title">EXERCICES DU BLOC</div>
+      <div class="tv-note" id="tvNote"></div>
+    </div>
+
     <div class="tv-clock mono" id="tvClock">00:00</div>
     <div class="tv-bar-wrap"><div class="tv-bar-fill" id="tvBarFill"></div></div>
     <div class="tv-next" id="tvNext"></div>
+
+    <div class="tv-run-summary" id="tvRunSummary">
+      <div class="rs-title">PROGRAMME DE LA SÉANCE</div>
+      <div class="rs-legend">
+        <span><b class="dot done"></b> Fait</span>
+        <span><b class="dot current"></b> En cours</span>
+        <span><b class="dot todo"></b> À faire</span>
+      </div>
+      <div class="rs-list" id="tvRunSummaryList"></div>
+    </div>
+
     <div class="tv-controls">
       <button id="tvPlayPause">Pause</button>
       <button id="tvSkip">Suivant</button>
       <button id="tvRestart">Relancer</button>
       <button id="tvBackToList">Voir la liste</button>
-    </div>
-    <div class="tv-run-summary" id="tvRunSummary">
-      <div class="rs-title">Résumé de la séance</div>
-      <div class="rs-list" id="tvRunSummaryList"></div>
     </div>
   </div>
 </div>
@@ -1646,6 +1739,7 @@ function renderTvRunSummary(steps){
         <span class="rs-dur mono">${fmtTime(s.duration_sec)}</span>
       </div>
       ${s.note ? `<div class="rs-note">${escapeHtml(s.note)}</div>` : ''}
+      <div class="rs-status">À faire</div>
     `;
     wrap.appendChild(row);
   });
@@ -1654,11 +1748,25 @@ function renderTvRunSummary(steps){
 function highlightTvRunSummary(activeIdx){
   const wrap = document.getElementById('tvRunSummaryList');
   if(!wrap) return;
+
   Array.from(wrap.children).forEach(row=>{
     const idx = Number(row.dataset.idx);
+    const status = row.querySelector('.rs-status');
+
     row.classList.toggle('current', idx === activeIdx);
     row.classList.toggle('done', activeIdx !== -1 && idx < activeIdx);
+
+    if(status){
+      if(activeIdx === -1 || idx < activeIdx){
+        status.textContent = 'Fait';
+      }else if(idx === activeIdx){
+        status.textContent = 'En cours';
+      }else{
+        status.textContent = 'À faire';
+      }
+    }
   });
+
   if(activeIdx === -1){
     Array.from(wrap.children).forEach(row=> row.classList.add('done'));
   }else{
@@ -1680,6 +1788,7 @@ function startStep(idx){
   if(idx >= tvSequence.length){
     document.getElementById('tvPhase').textContent = 'Terminé';
     document.getElementById('tvPhase').style.color = 'var(--rest)';
+    document.getElementById('tvBlockLabel').textContent = 'SÉANCE TERMINÉE';
     document.getElementById('tvName').textContent = 'Séance terminée 👊';
     document.getElementById('tvNote').textContent = '';
     document.getElementById('tvClock').textContent = '00:00';
@@ -1701,13 +1810,14 @@ function startStep(idx){
   phaseEl.textContent = PHASE_LABEL[step.phase];
   phaseEl.style.background = color;
   phaseEl.style.color = (step.phase === 'work' || step.phase === 'cooldown') ? '#ffffff' : '#0d1730';
+  document.getElementById('tvBlockLabel').textContent = `BLOC ${idx + 1} / ${tvSequence.length}`;
   document.getElementById('tvName').textContent = step.name;
-  document.getElementById('tvNote').textContent = step.note || '';
+  document.getElementById('tvNote').textContent = step.note || 'Aucun détail supplémentaire pour ce bloc.';
   document.getElementById('tvRunLoads').innerHTML = loadsHtml(step);
   document.getElementById('tvBarFill').style.background = color;
 
   const next = tvSequence[idx+1];
-  document.getElementById('tvNext').textContent = next ? `Suivant : ${next.name}` : 'Dernier bloc';
+  document.getElementById('tvNext').textContent = next ? `APRÈS : ${next.name}` : 'DERNIER BLOC — FIN DE LA SÉANCE';
   highlightTvRunSummary(idx);
 
   updateClock();
