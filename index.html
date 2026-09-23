@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -473,7 +474,11 @@ repos 1min entre chaque tour
 cooldown étirements 5min"></textarea>
       </div>
 
-      <button class="primary" id="formatManualBtn">Mettre en forme</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <button class="primary" id="formatManualBtn">Mettre en forme (IA)</button>
+        <button class="ghost" id="addRawBtn">Ajouter tel quel (sans IA)</button>
+      </div>
+      <p class="sub" style="margin:10px 0 0;max-width:none;">« Ajouter tel quel » ne fait aucun traitement : chaque ligne que tu écris devient une étape, dans l'ordre. Ça marche même sans clé Gemini.</p>
       <div id="manualStatus"></div>
     </div>
 
@@ -949,6 +954,61 @@ Règles :
   }finally{
     btn.disabled = false;
   }
+}
+
+document.getElementById('addRawBtn').addEventListener('click', addRawManualCourse);
+
+function guessRawPhase(line, index, total){
+  const l = line.toLowerCase();
+  if(/repos|rest|récup/.test(l)) return "rest";
+  if(index === 0 && /échauffement|echauffement|warmup|warm[- ]?up/.test(l)) return "warmup";
+  if(index === total - 1 && /cooldown|retour au calme|étirement|etirement|stretch/.test(l)) return "cooldown";
+  if(/échauffement|echauffement|warmup|warm[- ]?up/.test(l)) return "warmup";
+  if(/cooldown|retour au calme|étirement|etirement|stretch/.test(l)) return "cooldown";
+  return "work";
+}
+
+function guessRawDuration(line){
+  let sec = 0;
+  let found = false;
+  const min = line.match(/(\d+)\s*(?:min|m)\b/i);
+  const s = line.match(/(\d+)\s*(?:sec|s)\b/i);
+  if(min){ sec += parseInt(min[1]) * 60; found = true; }
+  if(s){ sec += parseInt(s[1]); found = true; }
+  return found ? Math.max(5, sec) : 60;
+}
+
+function addRawManualCourse(){
+  const title = document.getElementById('manualTitleInput').value.trim();
+  const rawText = document.getElementById('manualFreeText').value.trim();
+  const status = document.getElementById('manualStatus');
+
+  if(!rawText){ status.style.display='block'; status.style.color='var(--work)'; status.textContent = 'Écris ta séance dans la zone de texte d\'abord.'; return; }
+
+  const lines = rawText.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
+  if(lines.length === 0){ status.style.display='block'; status.style.color='var(--work)'; status.textContent = 'Écris ta séance dans la zone de texte d\'abord.'; return; }
+
+  const steps = lines.map((line, i)=>({
+    name: line,
+    phase: guessRawPhase(line, i, lines.length),
+    duration_sec: guessRawDuration(line),
+    note: "",
+    load_open: "",
+    load_pro: ""
+  }));
+
+  const totalSec = steps.reduce((a,s)=>a+s.duration_sec,0);
+  currentGenerated = {
+    id: 'c' + Date.now() + Math.floor(Math.random()*1000),
+    title: title || "Séance manuscrite",
+    discipline: selectedManualDiscipline,
+    duration_min: Math.round(totalSec/60),
+    steps
+  };
+
+  renderCourseCard(currentGenerated);
+  document.getElementById('courseCard').scrollIntoView({behavior:'smooth', block:'start'});
+  status.style.display = 'none';
 }
 
 /* ---------------------------------------------------------------
